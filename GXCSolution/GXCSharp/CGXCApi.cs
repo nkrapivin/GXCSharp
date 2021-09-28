@@ -23,7 +23,7 @@ namespace GXCSharp
 
         private void AddAuth(HttpWebRequest hwr)
         {
-            hwr.Headers.Add(HttpRequestHeader.Authorization, $"Bearer {MyReply.AccessToken}");
+            hwr.Headers.Add(HttpRequestHeader.Authorization, $"{MyReply.TokenType} {MyReply.AccessToken}");
         }
 
         private bool CheckHttpCode(HttpStatusCode hsc) => (int)hsc >= 200 && (int)hsc <= 299;
