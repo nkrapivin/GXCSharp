@@ -28,14 +28,14 @@ namespace GXCSharp
 
         private bool CheckHttpCode(HttpStatusCode hsc) => (int)hsc >= 200 && (int)hsc <= 299;
 
-        public async Task<CGXCResult<CGXCData<CGXCGameCreateResult>>> UploadGame(Guid gameid, Stream zipstream)
+        public async Task<CGXCResult<CGXCData<CGXCGame>>> UploadGame(Guid gameid, Stream zipstream)
         {
             string myurl = $"{CGXCAuthenticator.DEFAULT_API_SERVER}gms/games/{gameid:D}/bundles/upload";
             // TODO:
-            return CGXCResult<CGXCData<CGXCGameCreateResult>>.Fail(EGXCErrorCode.INTERNAL);
+            return CGXCResult<CGXCData<CGXCGame>>.Fail(EGXCErrorCode.INTERNAL);
         }
 
-        public async Task<CGXCResult<CGXCData<CGXCGameCreateResult>>> CreateGame(string lang, string gameName)
+        public async Task<CGXCResult<CGXCData<CGXCGame>>> CreateGame(string lang, string gameName)
         {
             var hwr = WebRequest.CreateHttp($"{CGXCAuthenticator.DEFAULT_API_SERVER}gms/games/create");
             AddAuth(hwr);
@@ -57,23 +57,23 @@ namespace GXCSharp
                 var hwres = (HttpWebResponse)await hwr.GetResponseAsync();
                 if (!CheckHttpCode(hwres.StatusCode))
                 {
-                    return CGXCResult<CGXCData<CGXCGameCreateResult>>.Fail(EGXCErrorCode.INTERNAL);
+                    return CGXCResult<CGXCData<CGXCGame>>.Fail(EGXCErrorCode.INTERNAL);
                 }
 
                 using (var st = hwres.GetResponseStream())
                 {
-                    var ret = await JsonSerializer.DeserializeAsync<CGXCData<CGXCGameCreateResult>>(st);
+                    var ret = await JsonSerializer.DeserializeAsync<CGXCData<CGXCGame>>(st);
                     if (ret is null)
                     {
-                        return CGXCResult<CGXCData<CGXCGameCreateResult>>.Fail(EGXCErrorCode.INTERNAL);
+                        return CGXCResult<CGXCData<CGXCGame>>.Fail(EGXCErrorCode.INTERNAL);
                     }
 
-                    return CGXCResult<CGXCData<CGXCGameCreateResult>>.Ok(ret);
+                    return CGXCResult<CGXCData<CGXCGame>>.Ok(ret);
                 }
             }
             catch
             {
-                return CGXCResult<CGXCData<CGXCGameCreateResult>>.Fail(EGXCErrorCode.INTERNAL);
+                return CGXCResult<CGXCData<CGXCGame>>.Fail(EGXCErrorCode.INTERNAL);
             }
         }
 
