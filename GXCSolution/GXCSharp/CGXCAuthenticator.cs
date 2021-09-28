@@ -24,10 +24,19 @@ namespace GXCSharp
         public static readonly string DEFAULT_AUTH_SERVER = "https://oauth2.opera-api.com/oauth2/v1/";
 
         /// <summary>
+        /// API Server, same defined in OAuth scopes.
+        /// </summary>
+        public static readonly string DEFAULT_API_SERVER = "https://api.gmx.dev/";
+
+        /// <summary>
         /// Default redirect URL, the library is responsible for the OAuth flow.
         /// </summary>
         private static readonly string DEFAULT_REDIRECT_URL = "http://localhost:8889/";
 
+
+        /// <summary>
+        /// Default OAuth scopes.
+        /// </summary>
         private static readonly string DEFAULT_SCOPES = "user+https://api.gmx.dev/gms:read+https://api.gmx.dev/gms:write";
 
         /// <summary>
@@ -35,7 +44,10 @@ namespace GXCSharp
         /// </summary>
         private static readonly string DEFAULT_CLIENT_TYPE = "game-maker";
 
-        private static readonly string DEFAULT_REPLY_MESSAGE = "GXCSharp: OAuth OK.";
+        /// <summary>
+        /// Message showed to the client after successful OAuth flow.
+        /// </summary>
+        private static readonly string DEFAULT_REPLY_MESSAGE = "GXCSharp: OAuth OK. Please return to your application for further instructions.";
 
         private string AuthServer { get; set; } = DEFAULT_AUTH_SERVER;
 
@@ -114,17 +126,24 @@ namespace GXCSharp
             }
             else
             {
-                // if the IGXCFileStorage secure file storage class HAS a token
-                // then we will try to use it.
-                // IF THE TASK RETURNS NULL, YOU(!) have to delete reftoken from the storage, and try again.
-                return await RefreshAuthenticate(myrefreshtoken);
+                if (await RefreshAuthenticate(myrefreshtoken) is CGXCApi _cgxc)
+                {
+                    return _cgxc;
+                }
+                else
+                {
+                    // refresh token had expired..?
+                    //await MyFileStorage.SetProperty(EGXCFileProperty.REFRESH_TOKEN, null);
+                    return null;
+                }
             }
         }
 
         private async Task<CGXCApi?> NewAuthenticate()
         {
-            var rawreply = Encoding.UTF8.GetBytes(ReplyMessage);
+            if (!HttpListener.IsSupported) return null;
 
+            var rawreply = Encoding.UTF8.GetBytes(ReplyMessage);
             HttpListener hl = new HttpListener();
 
             try
