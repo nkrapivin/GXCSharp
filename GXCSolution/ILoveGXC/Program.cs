@@ -10,7 +10,7 @@ namespace ILoveGXC
             Console.WriteLine("(gxcsharp by nkrapivindev, gxc by opera lol)");
 
             // delegate to open a url.
-            DOpenUrl WINDOWSurlopener = MyOpenUrl.Get();
+            DGXCOpenUrl WINDOWSurlopener = MyOpenUrl.Get();
 
             MyFileStorage mfs = new();
 
@@ -19,12 +19,16 @@ namespace ILoveGXC
 
             Console.WriteLine("You will be asked to authenticate through the browser (for the first time).");
 
+            CGXCResult<CGXCData<CGXCGame[]>>? gameslist = null;
+
             // class to main gxc api.
             if (await myauth.Authenticate() is CGXCApi myapi)
             {
                 Console.WriteLine("OAuth/V2 flow OK!");
 
-                var gameslist = await myapi.ListGames();
+                // I am WAY too lazy to split this up into functions....
+LDoList:
+                gameslist = await myapi.ListGames();
                 if (gameslist.Success && gameslist.Value is not null && gameslist.Value.Data is not null)
                 {
                     Console.WriteLine("Your current games:");
@@ -34,15 +38,16 @@ namespace ILoveGXC
                     }
                     Console.WriteLine();
 
-                    Console.Write("Enter the index of the game you wish to update (0,1,2,etc): ");
+                    Console.Write("Enter the index of the game you wish to update OR -1 to make a new (0,1,etc): ");
                     if (Console.ReadLine() is string myline && myline.Length > 0)
                     {
+                        bool gok = int.TryParse(myline, out int gameind);
                         // awful, I know...
-                        if (int.TryParse(myline, out int gameind) && gameind >= 0 && gameind < myline.Length
+                        if (gok && gameind >= 0 && gameind < gameslist.Value.Data.Length
                             && gameslist.Value.Data[gameind] is CGXCGame mygame && mygame.Id is Guid myguid)
                         {
                             Console.WriteLine($"Preparing upload for game '{mygame.Name}'...");
-                            Console.WriteLine("Drag and drop the zip file you wish to upload, or type full path to it:");
+                            Console.WriteLine("Drag and drop the ZIP file you wish to upload, or type full path to it:");
                             if (Console.ReadLine() is string mypath && mypath.Length > 0)
                             {
                                 Console.WriteLine($"Going to upload {mypath}, close the program if you don't want that.");
@@ -62,9 +67,28 @@ namespace ILoveGXC
                                 Console.WriteLine("Upload cancelled, good!");
                             }
                         }
-                        else
+                        else if (gameind != -1)
                         {
                             Console.WriteLine("Not a valid index... cheers.");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Type the name of your new game (or close me to cancel):");
+                            if (Console.ReadLine() is string gamename && gamename.Length > 1)
+                            {
+                                Console.WriteLine($"Creating game '{gamename}'...");
+                                var ok = (await myapi.CreateGame("en", gamename)).Success;
+                                if (ok)
+                                {
+                                    Console.WriteLine("Game created, refreshing list...");
+                                    // I know... I know...
+                                    goto LDoList;
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Game creation fail!");
+                                }
+                            }
                         }
                     }
                     else
@@ -76,7 +100,6 @@ namespace ILoveGXC
                 {
                     Console.WriteLine($"Request failed, errcode={gameslist.Error}");
                 }
-
             }
             else
             {

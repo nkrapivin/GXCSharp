@@ -57,7 +57,7 @@ namespace GXCSharp
 
         private string MyNonce { get; set; } = "";
 
-        private DOpenUrl OpenUrlDelegate { get; set; } = (string _) => { };
+        private DGXCOpenUrl OpenUrlDelegate { get; set; } = (string _) => { };
 
         private IGXCFileStorage MyFileStorage { get; set; } = new CGXCFileStorageDummy();
 
@@ -73,7 +73,7 @@ namespace GXCSharp
             return new string(nonce);
         }
 
-        public CGXCAuthenticator(DOpenUrl openUrlDelegate, IGXCFileStorage? fileStorage = null, string? authServerString = null, string? replyMessage = null)
+        public CGXCAuthenticator(DGXCOpenUrl openUrlDelegate, IGXCFileStorage? fileStorage = null, string? authServerString = null, string? replyMessage = null)
         {
             if (authServerString is string _as)
             {

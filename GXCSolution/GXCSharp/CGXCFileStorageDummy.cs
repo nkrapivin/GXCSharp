@@ -5,6 +5,9 @@ using System.Threading.Tasks;
 
 namespace GXCSharp
 {
+    /// <summary>
+    /// A dummy file storage used when none is provided, not a part of the public API.
+    /// </summary>
     class CGXCFileStorageDummy : IGXCFileStorage
     {
         public Task<string?> GetProperty(EGXCFileProperty prop)

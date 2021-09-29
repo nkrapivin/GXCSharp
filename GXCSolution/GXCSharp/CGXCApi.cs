@@ -33,7 +33,7 @@ namespace GXCSharp
 
         private bool CheckHttpCode(HttpStatusCode hsc) => (int)hsc >= 200 && (int)hsc <= 299;
 
-        public async Task<CGXCResult<CGXCData<CGXCGame>>> UploadGame(Guid gameGuid, Stream zipStream)
+        public async Task<CGXCResult<CGXCData<CGXCGame>>> UploadGame(Guid gameGuid, Stream zipStream, DGXCProgress? progressDel = null)
         {
             try
             {
@@ -43,6 +43,10 @@ namespace GXCSharp
                     var myurl = $"{CGXCAuthenticator.DEFAULT_API_SERVER}gms/games/{gameGuid:D}/bundles/upload";
                     hc.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
                     mfdc.Add(hc, "file", "GameBundle.zip");
+
+                    // initialize with 0% and length.
+                    if (progressDel is DGXCProgress)
+                        progressDel(0, zipStream.Length);
 
                     var taskreply = await MyClient.PostAsync(myurl, mfdc);
 

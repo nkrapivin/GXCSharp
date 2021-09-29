@@ -5,6 +5,9 @@ using System.Text.Json.Serialization;
 
 namespace GXCSharp
 {
+    /// <summary>
+    /// A descriptor for a GXC game.
+    /// </summary>
     public class CGXCGame
     {
         [JsonPropertyName("id")]

@@ -15,9 +15,9 @@ namespace ILoveGXC
 
         public static async Task<MyFileImpl> Fetch()
         {
-            using (var fs = new FileStream("secret_data.json", FileMode.OpenOrCreate, FileAccess.Read, FileShare.None, 4096, true))
+            try
             {
-                try
+                using (var fs = new FileStream("secret_data.json", FileMode.OpenOrCreate, FileAccess.Read, FileShare.None, 4096, true))
                 {
                     MyFileImpl? impl = await JsonSerializer.DeserializeAsync<MyFileImpl>(fs);
                     if (impl is null)
@@ -29,10 +29,10 @@ namespace ILoveGXC
                         return impl;
                     }
                 }
-                catch
-                {
-                    return new MyFileImpl();
-                }
+            }
+            catch
+            {
+                return new MyFileImpl();
             }
         }
 

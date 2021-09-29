@@ -11,45 +11,59 @@ namespace ILoveGXC
     {
         public async Task<string?> GetProperty(EGXCFileProperty prop)
         {
-            var impl = await MyFileImpl.Fetch();
-            switch (prop)
+            try
             {
-                case EGXCFileProperty.REFRESH_TOKEN:
-                    {
-                        return impl.RefreshToken;
-                    }
+                var impl = await MyFileImpl.Fetch();
+                switch (prop)
+                {
+                    case EGXCFileProperty.REFRESH_TOKEN:
+                        {
+                            return impl.RefreshToken;
+                        }
 
-                default:
-                    {
-                        return null;
-                    }
+                    default:
+                        {
+                            return null;
+                        }
+                }
+            }
+            catch
+            {
+                return null;
             }
         }
 
         public async Task SetProperty(EGXCFileProperty prop, string? value)
         {
-            var impl = await MyFileImpl.Fetch();
-            var dosave = true;
-
-            switch (prop)
+            try
             {
-                case EGXCFileProperty.REFRESH_TOKEN:
-                    {
-                        impl.RefreshToken = value;
-                        break;
-                    }
+                var impl = await MyFileImpl.Fetch();
+                var dosave = true;
 
-                default:
-                    {
-                        // no valid property has been set, don't bother saving.
-                        dosave = false;
-                        break;
-                    }
+                switch (prop)
+                {
+                    case EGXCFileProperty.REFRESH_TOKEN:
+                        {
+                            impl.RefreshToken = value;
+                            break;
+                        }
+
+                    default:
+                        {
+                            // no valid property has been set, don't bother saving.
+                            dosave = false;
+                            break;
+                        }
+                }
+
+                if (dosave)
+                {
+                    await MyFileImpl.Push(impl);
+                }
             }
-
-            if (dosave)
+            catch
             {
-                await MyFileImpl.Push(impl);
+                // TODO: somehow report set errors?
             }
         }
     }

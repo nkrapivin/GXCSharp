@@ -4,6 +4,9 @@ using System.Text;
 
 namespace GXCSharp
 {
+    /// <summary>
+    /// File properties that can be fetched or pushed into the file storage.
+    /// </summary>
     public enum EGXCFileProperty
     {
         UNKNOWN,

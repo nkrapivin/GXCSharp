@@ -19,6 +19,6 @@ namespace ILoveGXC
             }
         }
 
-        public static DOpenUrl Get() => Implementation;
+        public static DGXCOpenUrl Get() => Implementation;
     }
 }

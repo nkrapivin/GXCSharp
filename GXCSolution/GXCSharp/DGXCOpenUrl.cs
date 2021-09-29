@@ -8,5 +8,5 @@ namespace GXCSharp
     /// A delegate whose sole purpose is to open a URL so the httplistener can catch up.
     /// </summary>
     /// <param name="urlToOpen">URL to open, is never null.</param>
-    public delegate void DOpenUrl(string urlToOpen);
+    public delegate void DGXCOpenUrl(string urlToOpen);
 }
