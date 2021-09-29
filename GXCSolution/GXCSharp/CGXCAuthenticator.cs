@@ -96,23 +96,30 @@ namespace GXCSharp
 
         private async Task<CGXCApi?> RefreshAuthenticate(string reftoken)
         {
-            //string text = $"grant_type=refresh_token&refresh_token={m_OAUTH2_refresh_token}&client_id={clientID}&client_secret{clientSecret}";
-            string tokenurl = $"grant_type=refresh_token&refresh_token={reftoken}&client_id={DEFAULT_CLIENT_TYPE}&client_secret=";
-            HttpWebRequest webreq = WebRequest.CreateHttp($"{AuthServer}token/");
-            webreq.Method = "POST";
-            webreq.ContentType = "application/x-www-form-urlencoded";
-            await (await webreq.GetRequestStreamAsync()).WriteAsync(Encoding.UTF8.GetBytes(tokenurl));
-            var webreply = await webreq.GetResponseAsync();
-            var jsonreply = await JsonSerializer.DeserializeAsync<CGXCAuthenticatorReply>(webreply.GetResponseStream());
-            webreply.Dispose();
+            try
+            {
+                //string text = $"grant_type=refresh_token&refresh_token={m_OAUTH2_refresh_token}&client_id={clientID}&client_secret{clientSecret}";
+                string tokenurl = $"grant_type=refresh_token&refresh_token={reftoken}&client_id={DEFAULT_CLIENT_TYPE}&client_secret=";
+                HttpWebRequest webreq = WebRequest.CreateHttp($"{AuthServer}token/");
+                webreq.Method = "POST";
+                webreq.ContentType = "application/x-www-form-urlencoded";
+                await (await webreq.GetRequestStreamAsync()).WriteAsync(Encoding.UTF8.GetBytes(tokenurl));
+                var webreply = await webreq.GetResponseAsync();
+                var jsonreply = await JsonSerializer.DeserializeAsync<CGXCAuthenticatorReply>(webreply.GetResponseStream());
+                webreply.Dispose();
 
-            if (jsonreply is null)
+                if (jsonreply is null)
+                {
+                    return null;
+                }
+                else
+                {
+                    return new CGXCApi(jsonreply);
+                }
+            }
+            catch
             {
                 return null;
-            }
-            else
-            {
-                return new CGXCApi(jsonreply);
             }
         }
 
@@ -141,52 +148,59 @@ namespace GXCSharp
 
         private async Task<CGXCApi?> NewAuthenticate()
         {
-            if (!HttpListener.IsSupported) return null;
-
-            var rawreply = Encoding.UTF8.GetBytes(ReplyMessage);
-            HttpListener hl = new HttpListener();
-
             try
             {
-                hl.Prefixes.Add(DEFAULT_REDIRECT_URL);
-                hl.Start();
+                if (!HttpListener.IsSupported) return null;
+
+                var rawreply = Encoding.UTF8.GetBytes(ReplyMessage);
+                HttpListener hl = new HttpListener();
+
+                try
+                {
+                    hl.Prefixes.Add(DEFAULT_REDIRECT_URL);
+                    hl.Start();
+                }
+                catch
+                {
+                    return null;
+                }
+
+                string theurl = $"{AuthServer}authorize?response_type=code&client_id={DEFAULT_CLIENT_TYPE}&redirect_uri={DEFAULT_REDIRECT_URL}&state={MyNonce}&scope={DEFAULT_SCOPES}";
+                OpenUrlDelegate(theurl);
+
+                var hlctx = await hl.GetContextAsync();
+                var hlreply = hlctx.Response;
+                var hlmsg = hlctx.Request;
+                var gxccode = hlmsg.QueryString["code"];
+
+                hlreply.ContentLength64 = rawreply.Length;
+                await hlreply.OutputStream.WriteAsync(rawreply);
+                hlreply.OutputStream.Close();
+                hlreply.Close();
+
+                string tokenurl = $"grant_type=authorization_code&code={gxccode}&redirect_uri={DEFAULT_REDIRECT_URL}&scope={DEFAULT_SCOPES}&client_id={DEFAULT_CLIENT_TYPE}&client_secret=";
+                HttpWebRequest webreq = WebRequest.CreateHttp($"{AuthServer}token/");
+                webreq.Method = "POST";
+                webreq.ContentType = "application/x-www-form-urlencoded";
+                await (await webreq.GetRequestStreamAsync()).WriteAsync(Encoding.UTF8.GetBytes(tokenurl));
+                var webresponse = await webreq.GetResponseAsync();
+                var jsonreply = await JsonSerializer.DeserializeAsync<CGXCAuthenticatorReply>(webresponse.GetResponseStream());
+                webresponse.Dispose();
+                hl.Stop();
+
+                if (jsonreply is null)
+                {
+                    return null;
+                }
+                else
+                {
+                    await MyFileStorage.SetProperty(EGXCFileProperty.REFRESH_TOKEN, jsonreply.RefreshToken);
+                    return new CGXCApi(jsonreply);
+                }
             }
             catch
             {
                 return null;
-            }
-
-            string theurl = $"{AuthServer}authorize?response_type=code&client_id={DEFAULT_CLIENT_TYPE}&redirect_uri={DEFAULT_REDIRECT_URL}&state={MyNonce}&scope={DEFAULT_SCOPES}";
-            OpenUrlDelegate(theurl);
-
-            var hlctx = await hl.GetContextAsync();
-            var hlreply = hlctx.Response;
-            var hlmsg = hlctx.Request;
-            var gxccode = hlmsg.QueryString["code"];
-
-            hlreply.ContentLength64 = rawreply.Length;
-            await hlreply.OutputStream.WriteAsync(rawreply);
-            hlreply.OutputStream.Close();
-            hlreply.Close();
-
-            string tokenurl = $"grant_type=authorization_code&code={gxccode}&redirect_uri={DEFAULT_REDIRECT_URL}&scope={DEFAULT_SCOPES}&client_id={DEFAULT_CLIENT_TYPE}&client_secret=";
-            HttpWebRequest webreq = WebRequest.CreateHttp($"{AuthServer}token/");
-            webreq.Method = "POST";
-            webreq.ContentType = "application/x-www-form-urlencoded";
-            await (await webreq.GetRequestStreamAsync()).WriteAsync(Encoding.UTF8.GetBytes(tokenurl));
-            var webresponse = await webreq.GetResponseAsync();
-            var jsonreply = await JsonSerializer.DeserializeAsync<CGXCAuthenticatorReply>(webresponse.GetResponseStream());
-            webresponse.Dispose();
-            hl.Stop();
-
-            if (jsonreply is null)
-            {
-                return null;
-            }
-            else
-            {
-                await MyFileStorage.SetProperty(EGXCFileProperty.REFRESH_TOKEN, jsonreply.RefreshToken);
-                return new CGXCApi(jsonreply);
             }
         }
     }

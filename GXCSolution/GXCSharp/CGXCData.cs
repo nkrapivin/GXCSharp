@@ -12,5 +12,8 @@ namespace GXCSharp
 
         [JsonPropertyName("error")]
         public string? Error { get; set; }
+
+        [JsonPropertyName("errors")]
+        public string[]? Errors { get; set; }
     }
 }

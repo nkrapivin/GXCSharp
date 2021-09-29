@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -16,9 +18,12 @@ namespace GXCSharp
     {
         private CGXCAuthenticatorReply MyReply { get; set; }
 
+        private readonly HttpClient MyClient = new HttpClient();
+
         internal CGXCApi(CGXCAuthenticatorReply _myreply)
         {
             MyReply = _myreply;
+            MyClient.DefaultRequestHeaders.Add("Authorization", $"{MyReply.TokenType} {MyReply.AccessToken}");
         }
 
         private void AddAuth(HttpWebRequest hwr)
@@ -28,11 +33,43 @@ namespace GXCSharp
 
         private bool CheckHttpCode(HttpStatusCode hsc) => (int)hsc >= 200 && (int)hsc <= 299;
 
-        public async Task<CGXCResult<CGXCData<CGXCGame>>> UploadGame(Guid gameid, Stream zipstream)
+        public async Task<CGXCResult<CGXCData<CGXCGame>>> UploadGame(Guid gameGuid, Stream zipStream)
         {
-            string myurl = $"{CGXCAuthenticator.DEFAULT_API_SERVER}gms/games/{gameid:D}/bundles/upload";
-            // TODO:
-            return CGXCResult<CGXCData<CGXCGame>>.Fail(EGXCErrorCode.INTERNAL);
+            try
+            {
+                using (var hc = new StreamContent(zipStream))
+                using (var mfdc = new MultipartFormDataContent())
+                {
+                    var myurl = $"{CGXCAuthenticator.DEFAULT_API_SERVER}gms/games/{gameGuid:D}/bundles/upload";
+                    hc.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
+                    mfdc.Add(hc, "file", "GameBundle.zip");
+
+                    var taskreply = await MyClient.PostAsync(myurl, mfdc);
+
+                    if (taskreply.IsSuccessStatusCode)
+                    {
+                        using (var replys = await taskreply.Content.ReadAsStreamAsync())
+                        {
+                            var jsonreply = await JsonSerializer.DeserializeAsync<CGXCData<CGXCGame>>(replys);
+                            if (jsonreply is null)
+                            {
+                                return CGXCResult<CGXCData<CGXCGame>>.Fail(EGXCErrorCode.INTERNAL);
+                            }
+                            else
+                            {
+                                return CGXCResult<CGXCData<CGXCGame>>.Ok(jsonreply);
+                            }
+                        }
+                    }
+                }
+
+                return CGXCResult<CGXCData<CGXCGame>>.Fail(EGXCErrorCode.INTERNAL);
+            }
+            catch
+            {
+                // TODO:
+                return CGXCResult<CGXCData<CGXCGame>>.Fail(EGXCErrorCode.INTERNAL);
+            }
         }
 
         public async Task<CGXCResult<CGXCData<CGXCGame>>> CreateGame(string lang, string gameName)

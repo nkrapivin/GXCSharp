@@ -1,23 +1,13 @@
 ﻿using GXCSharp;
-using System.Diagnostics;
 
 namespace ILoveGXC
 {
     public static class Program
     {
-        public static void PrintGXCGameArr(CGXCGame[] vv)
-        {
-            Console.WriteLine("Games:");
-            foreach (var gg in vv)
-            {
-                Console.WriteLine($"ID = {gg.Id}, Name = {gg.Name}");
-            }
-            Console.WriteLine("Listing end.");
-        }
-
         public static async Task<int> Main()
         {
-            Console.WriteLine("GXCSharp test:");
+            Console.WriteLine("GXCSharp/Uploader Test:");
+            Console.WriteLine("(gxcsharp by nkrapivindev, gxc by opera lol)");
 
             // delegate to open a url.
             DOpenUrl WINDOWSurlopener = MyOpenUrl.Get();
@@ -27,60 +17,74 @@ namespace ILoveGXC
             // class to auth.
             CGXCAuthenticator myauth = new(WINDOWSurlopener, mfs);
 
+            Console.WriteLine("You will be asked to authenticate through the browser (for the first time).");
+
             // class to main gxc api.
             if (await myauth.Authenticate() is CGXCApi myapi)
             {
-                Console.WriteLine("auth ok!");
+                Console.WriteLine("OAuth/V2 flow OK!");
 
                 var gameslist = await myapi.ListGames();
                 if (gameslist.Success && gameslist.Value is not null && gameslist.Value.Data is not null)
                 {
-                    PrintGXCGameArr(gameslist.Value.Data);
+                    Console.WriteLine("Your current games:");
+                    for (int i = 0; i < gameslist.Value.Data.Length; ++i)
+                    {
+                        Console.WriteLine($"[{i,3}] | Id = {gameslist.Value.Data[i].Id}, Name = '{gameslist.Value.Data[i].Name}'.");
+                    }
+                    Console.WriteLine();
+
+                    Console.Write("Enter the index of the game you wish to update (0,1,2,etc): ");
+                    if (Console.ReadLine() is string myline && myline.Length > 0)
+                    {
+                        // awful, I know...
+                        if (int.TryParse(myline, out int gameind) && gameind >= 0 && gameind < myline.Length
+                            && gameslist.Value.Data[gameind] is CGXCGame mygame && mygame.Id is Guid myguid)
+                        {
+                            Console.WriteLine($"Preparing upload for game '{mygame.Name}'...");
+                            Console.WriteLine("Drag and drop the zip file you wish to upload, or type full path to it:");
+                            if (Console.ReadLine() is string mypath && mypath.Length > 0)
+                            {
+                                Console.WriteLine($"Going to upload {mypath}, close the program if you don't want that.");
+                                Console.Write("Press any key to continue . . . ");
+                                Console.ReadKey(true);
+
+                                using (var fs = new FileStream(mypath, FileMode.Open, FileAccess.Read, FileShare.None, 4096, true))
+                                {
+                                    Console.WriteLine("UPLOADING, DO NOT CLOSE THE PROGRAM...");
+                                    await myapi.UploadGame(myguid, fs);
+                                }
+
+                                Console.WriteLine("Upload done, please see GXC.");
+                            }
+                            else
+                            {
+                                Console.WriteLine("Upload cancelled, good!");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Not a valid index... cheers.");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("No.. input given? Okay, see ya!");
+                    }
                 }
                 else
                 {
                     Console.WriteLine($"Request failed, errcode={gameslist.Error}");
                 }
 
-                Console.Write("Do you wish to make a new game? If so, type it's name: ");
-                var line = Console.ReadLine();
-
-                if (line is string && line.Length > 1)
-                {
-                    Console.WriteLine("okay...");
-
-
-                    /*
-                     * STRESSTEST, DO NOT EXECUTE.
-                    for (int i = 0; i < 10000000; ++i)
-                    {
-                        await myapi.CreateGame("en", $"bruh moment number {i}");
-                    }
-                     */
-
-                    var res = await myapi.CreateGame("en", line);
-
-                    if (res.Success && res.Value is not null && res.Value.Data is not null)
-                    {
-                        Console.WriteLine($"Game Name - {res.Value.Data.Name}");
-                        Console.WriteLine($"Edit URL  - {res.Value.Data.EditUrl}");
-                        Console.WriteLine($"Game Lang - {res.Value.Data.Lang}");
-                    }
-                    else
-                    {
-                        Console.WriteLine("An error has occurred..?");
-                    }
-
-                    Console.WriteLine("Test complete!");
-                }
             }
             else
             {
                 Console.WriteLine("TASK HAS FAILED ..?");
             }
 
+            Console.Write("Press any key to exit . . . ");
             Console.ReadKey(true);
-
 
             return 0;
         }
