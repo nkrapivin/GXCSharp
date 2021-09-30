@@ -12,6 +12,7 @@ namespace GXCSharp
         UNKNOWN,
         NONE,
         INTERNAL,
+        HTTP,
         REFRESH_TOKEN_EXPIRED,
         _LENGTH
     }

@@ -101,7 +101,7 @@ namespace GXCSharp
                 var hwres = (HttpWebResponse)await hwr.GetResponseAsync();
                 if (!CheckHttpCode(hwres.StatusCode))
                 {
-                    return CGXCResult<CGXCData<CGXCGame>>.Fail(EGXCErrorCode.INTERNAL);
+                    return CGXCResult<CGXCData<CGXCGame>>.Fail(EGXCErrorCode.HTTP);
                 }
 
                 using (var st = hwres.GetResponseStream())
@@ -134,7 +134,7 @@ namespace GXCSharp
 
                 if (!CheckHttpCode(hwres.StatusCode))
                 {
-                    return CGXCResult<CGXCData<CGXCGame[]>>.Fail(EGXCErrorCode.INTERNAL);
+                    return CGXCResult<CGXCData<CGXCGame[]>>.Fail(EGXCErrorCode.HTTP);
                 }
 
                 using (var st = hwres.GetResponseStream())
