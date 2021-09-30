@@ -29,10 +29,14 @@ namespace GXCSharp
         public static readonly string DEFAULT_API_SERVER = "https://api.gmx.dev/";
 
         /// <summary>
+        /// API Server, same defined in OAuth scopes.
+        /// </summary>
+        public static readonly string DEFAULT_TEST_API_SERVER = "https://test.api.gmx.dev/";
+
+        /// <summary>
         /// Default redirect URL, the library is responsible for the OAuth flow.
         /// </summary>
         private static readonly string DEFAULT_REDIRECT_URL = "http://localhost:8889/";
-
 
         /// <summary>
         /// Default OAuth scopes.
@@ -44,14 +48,9 @@ namespace GXCSharp
         /// </summary>
         private static readonly string DEFAULT_CLIENT_TYPE = "game-maker";
 
-        /// <summary>
-        /// Message showed to the client after successful OAuth flow.
-        /// </summary>
-        private static readonly string DEFAULT_REPLY_MESSAGE = "GXCSharp: OAuth OK. Please return to your application for further instructions.";
-
         private string AuthServer { get; set; } = DEFAULT_AUTH_SERVER;
 
-        private string ReplyMessage { get; set; } = DEFAULT_REPLY_MESSAGE;
+        private string ApiServer { get; set; } = DEFAULT_API_SERVER;
 
         private static readonly Random RANDOM = new Random();
 
@@ -60,6 +59,8 @@ namespace GXCSharp
         private DGXCOpenUrl OpenUrlDelegate { get; set; } = (string _) => { };
 
         private IGXCFileStorage MyFileStorage { get; set; } = new CGXCFileStorageDummy();
+
+        private IGXCHttpListener MyListener { get; set; } = new CGXCHttpListenerDummy();
 
         private static string GenerateRandomNonce()
         {
@@ -73,21 +74,26 @@ namespace GXCSharp
             return new string(nonce);
         }
 
-        public CGXCAuthenticator(DGXCOpenUrl openUrlDelegate, IGXCFileStorage? fileStorage = null, string? authServerString = null, string? replyMessage = null)
+        public CGXCAuthenticator(DGXCOpenUrl openUrlDelegate, IGXCFileStorage? fileStorage = null, IGXCHttpListener? listener = null, string? authServerString = null, string? apiServerString = null)
         {
             if (authServerString is string _as)
             {
                 AuthServer = _as;
             }
 
-            if (replyMessage is string _rm)
+            if (apiServerString is string _apis)
             {
-                ReplyMessage = _rm;
+                ApiServer = _apis;
             }
 
             if (fileStorage is IGXCFileStorage _fs)
             {
                 MyFileStorage = _fs;
+            }
+
+            if (listener is IGXCHttpListener _hl)
+            {
+                MyListener = _hl;
             }
 
             OpenUrlDelegate = openUrlDelegate;
@@ -114,7 +120,7 @@ namespace GXCSharp
                 }
                 else
                 {
-                    return new CGXCApi(jsonreply);
+                    return new CGXCApi(jsonreply, ApiServer);
                 }
             }
             catch
@@ -150,33 +156,17 @@ namespace GXCSharp
         {
             try
             {
-                if (!HttpListener.IsSupported) return null;
+                string theurl = $"{AuthServer}authorize?response_type=code&client_id={DEFAULT_CLIENT_TYPE}&redirect_uri={DEFAULT_REDIRECT_URL}&state={MyNonce}&scope={DEFAULT_SCOPES}";
+                OpenUrlDelegate(theurl);
 
-                var rawreply = Encoding.UTF8.GetBytes(ReplyMessage);
-                HttpListener hl = new HttpListener();
-
-                try
-                {
-                    hl.Prefixes.Add(DEFAULT_REDIRECT_URL);
-                    hl.Start();
-                }
-                catch
+                var rawurl = await MyListener.ListenOn(DEFAULT_REDIRECT_URL);
+                if (rawurl is null)
                 {
                     return null;
                 }
 
-                string theurl = $"{AuthServer}authorize?response_type=code&client_id={DEFAULT_CLIENT_TYPE}&redirect_uri={DEFAULT_REDIRECT_URL}&state={MyNonce}&scope={DEFAULT_SCOPES}";
-                OpenUrlDelegate(theurl);
-
-                var hlctx = await hl.GetContextAsync();
-                var hlreply = hlctx.Response;
-                var hlmsg = hlctx.Request;
-                var gxccode = hlmsg.QueryString["code"];
-
-                hlreply.ContentLength64 = rawreply.Length;
-                await hlreply.OutputStream.WriteAsync(rawreply);
-                hlreply.OutputStream.Close();
-                hlreply.Close();
+                var queries = CGXCQueryParser.Parse(rawurl);
+                var gxccode = queries["code"];
 
                 string tokenurl = $"grant_type=authorization_code&code={gxccode}&redirect_uri={DEFAULT_REDIRECT_URL}&scope={DEFAULT_SCOPES}&client_id={DEFAULT_CLIENT_TYPE}&client_secret=";
                 HttpWebRequest webreq = WebRequest.CreateHttp($"{AuthServer}token/");
@@ -186,7 +176,6 @@ namespace GXCSharp
                 var webresponse = await webreq.GetResponseAsync();
                 var jsonreply = await JsonSerializer.DeserializeAsync<CGXCAuthenticatorReply>(webresponse.GetResponseStream());
                 webresponse.Dispose();
-                hl.Stop();
 
                 if (jsonreply is null)
                 {
@@ -195,7 +184,7 @@ namespace GXCSharp
                 else
                 {
                     await MyFileStorage.SetProperty(EGXCFileProperty.REFRESH_TOKEN, jsonreply.RefreshToken);
-                    return new CGXCApi(jsonreply);
+                    return new CGXCApi(jsonreply, ApiServer);
                 }
             }
             catch

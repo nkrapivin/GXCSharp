@@ -20,10 +20,13 @@ namespace GXCSharp
 
         private readonly HttpClient MyClient = new HttpClient();
 
-        internal CGXCApi(CGXCAuthenticatorReply _myreply)
+        private string MyServer { get; set; } = CGXCAuthenticator.DEFAULT_API_SERVER;
+
+        internal CGXCApi(CGXCAuthenticatorReply _myreply, string _serverstring)
         {
             MyReply = _myreply;
             MyClient.DefaultRequestHeaders.Add("Authorization", $"{MyReply.TokenType} {MyReply.AccessToken}");
+            MyServer = _serverstring;
         }
 
         private void AddAuth(HttpWebRequest hwr)
@@ -40,7 +43,7 @@ namespace GXCSharp
                 using (var hc = new StreamContent(zipStream))
                 using (var mfdc = new MultipartFormDataContent())
                 {
-                    var myurl = $"{CGXCAuthenticator.DEFAULT_API_SERVER}gms/games/{gameGuid:D}/bundles/upload";
+                    var myurl = $"{MyServer}gms/games/{gameGuid:D}/bundles/upload";
                     hc.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
                     mfdc.Add(hc, "file", "GameBundle.zip");
 
@@ -78,7 +81,7 @@ namespace GXCSharp
 
         public async Task<CGXCResult<CGXCData<CGXCGame>>> CreateGame(string lang, string gameName)
         {
-            var hwr = WebRequest.CreateHttp($"{CGXCAuthenticator.DEFAULT_API_SERVER}gms/games/create");
+            var hwr = WebRequest.CreateHttp($"{MyServer}gms/games/create");
             AddAuth(hwr);
 
             hwr.Method = "POST";
@@ -120,7 +123,7 @@ namespace GXCSharp
 
         public async Task<CGXCResult<CGXCData<CGXCGame[]>>> ListGames()
         {
-            var hwr = WebRequest.CreateHttp($"{CGXCAuthenticator.DEFAULT_API_SERVER}gms/games");
+            var hwr = WebRequest.CreateHttp($"{MyServer}gms/games");
             AddAuth(hwr);
 
             hwr.Method = "GET";
