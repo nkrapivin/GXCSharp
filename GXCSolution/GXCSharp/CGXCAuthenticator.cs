@@ -97,7 +97,6 @@ namespace GXCSharp
             }
 
             OpenUrlDelegate = openUrlDelegate;
-            MyNonce = GenerateRandomNonce();
         }
 
         private async Task<CGXCApi?> RefreshAuthenticate(string reftoken)
@@ -132,6 +131,7 @@ namespace GXCSharp
         public async Task<CGXCApi?> Authenticate()
         {
             var myrefreshtoken = await MyFileStorage.GetProperty(EGXCFileProperty.REFRESH_TOKEN);
+            MyNonce = GenerateRandomNonce();
             if (myrefreshtoken is null)
             {
                 // will try to reoauth from the very beginning (+httplistener)
